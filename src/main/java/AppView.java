@@ -116,8 +116,9 @@ public class AppView extends Application {
 
 
         DatePicker startDatePicker = new DatePicker(DEFAULT_START_DATE);
-        startDatePicker.setOnAction(t -> actiontargetStartDate.setText(startDatePicker.getValue().format(DateTimeFormatter.ofPattern("dd MMM uuuu"))));
-        LocalDate startDate = startDatePicker.getValue();
+        startDatePicker.setOnAction(t -> {
+            actiontargetStartDate.setText(startDatePicker.getValue().format(DateTimeFormatter.ofPattern("dd MMM uuuu")));
+        });
         grid.add(startDatePicker, 1, 4);
         grid.add(actiontargetStartDate, 1, 5);
 
@@ -129,7 +130,6 @@ public class AppView extends Application {
 
         DatePicker endDatePicker = new DatePicker(DEFAULT_END_DATE);
         endDatePicker.setOnAction(t -> actiontargetEndDate.setText(endDatePicker.getValue().format(DateTimeFormatter.ofPattern("dd MMM uuuu"))));
-        LocalDate endDate = endDatePicker.getValue();
         grid.add(endDatePicker, 1, 6);
         grid.add(actiontargetEndDate, 1, 7);
 
@@ -146,7 +146,7 @@ public class AppView extends Application {
                 String month = monthCheckBox.getValue() != null ? monthCheckBox.getValue().toLowerCase() : "";
                 Set<String> engineerNames = EngineerNames.readEngineerNames();
                 String pathName = DEFAULT_TARGET_PATH;
-                RP_ExcelUtils.writeFiles(engineerNames, reports, pathName, startDate, endDate, month);
+                RP_ExcelUtils.writeFiles(engineerNames, reports, pathName, startDatePicker.getValue(), endDatePicker.getValue(), month);
                 changeActionTargetResult(MAIN_SUCCESS_MESSAGE, true);
             } catch (Exception ex) {
                 ex.printStackTrace();

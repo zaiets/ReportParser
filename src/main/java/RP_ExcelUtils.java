@@ -2,7 +2,6 @@ import exceptions.InfoException;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import properties.PropertyUtils;
 
 import java.io.*;
 import java.time.Clock;
@@ -23,8 +22,8 @@ public class RP_ExcelUtils {
             TaskType reportType;
             List<Task> tasks = new ArrayList<>();
             int rowStartPosition = 10;
-            try {
-                XSSFSheet sheet = getWorkbook(excelFile).getSheetAt(0);
+            try (XSSFWorkbook workbook = getWorkbook(excelFile)){
+                XSSFSheet sheet = workbook.getSheetAt(0);
                 //define report type
                 if (excelFile.getName().contains("РД") || excelFile.getName().contains("ПСД")) {
                     reportType = TaskType.РД;
@@ -103,12 +102,12 @@ public class RP_ExcelUtils {
                 Date taskDate = task.getEndDate();
                 if (taskDate == null ||
                         (taskDate.after(Date.from(start.atStartOfDay(ZoneId.systemDefault()).toInstant())) &&
-                                taskDate.before(Date.from(end.atStartOfDay(ZoneId.systemDefault()).toInstant())))) currentTasks.add(task);
+                                taskDate.before(Date.from(end.atStartOfDay(ZoneId.systemDefault()).toInstant()))))
+                    currentTasks.add(task);
             });
             engineerReportList.add(new Report(report.getStage(), currentTasks));
         }
-        try {
-            XSSFWorkbook workbook = getReportTemplateWorkbook();
+        try (XSSFWorkbook workbook = getReportTemplateWorkbook()) {
             XSSFSheet sheet = workbook.getSheetAt(0);
             //устаноовим имя отчетуемого
             sheet.getRow(2).createCell(1).setCellValue(name);
@@ -129,14 +128,14 @@ public class RP_ExcelUtils {
             Font font2 = workbook.createFont();
             font2.setColor(IndexedColors.BLUE.getIndex());
             font2.setBold(true);
-            font2.setUnderline((byte)1);
-            font2.setFontHeightInPoints((short)12);
+            font2.setUnderline((byte) 1);
+            font2.setFontHeightInPoints((short) 12);
             header2Style.setFont(font2);
 
             int rowStartPointer = sheet.getLastRowNum() + 1;
-            Collections.sort(engineerReportList, (o1, o2) -> o1.getStage().ordinal()-o2.getStage().ordinal());
+            Collections.sort(engineerReportList, (o1, o2) -> o1.getStage().ordinal() - o2.getStage().ordinal());
 
-            Map <String, List<Task>> uniqueTaskList;
+            Map<String, List<Task>> uniqueTaskList;
             Set<String> mapKeys;
             List<String> taskInfoList;
 
@@ -153,7 +152,7 @@ public class RP_ExcelUtils {
                     row.createCell(0).setCellValue(key);
                     row.getCell(0).setCellStyle(header1Style);
                     //заполним пустые ячейки
-                    for (int i = 1; i < cellStyles.size() ; i++) {
+                    for (int i = 1; i < cellStyles.size(); i++) {
                         row.createCell(i).setCellStyle(cellStyles.get(i));
                     }
 
@@ -188,25 +187,31 @@ public class RP_ExcelUtils {
 
 
     private static String getStringCellValue(Cell cell) {
-        String s = "";
-        switch (cell.getCellType()) {
-            case Cell.CELL_TYPE_BLANK:
-                break;
-            case Cell.CELL_TYPE_BOOLEAN:
-                s += cell.getBooleanCellValue();
-                break;
-            case Cell.CELL_TYPE_ERROR:
-                s += cell.getErrorCellValue();
-                break;
-            case Cell.CELL_TYPE_FORMULA:
-                s += cell.getCellFormula();
-                break;
-            case Cell.CELL_TYPE_NUMERIC:
-                s += (int)cell.getNumericCellValue();
-                break;
-            case Cell.CELL_TYPE_STRING:
-                s += cell.getStringCellValue();
-                break;
+        String s = " ";
+        try {
+            switch (cell.getCellType()) {
+                case Cell.CELL_TYPE_BLANK:
+                    break;
+                case Cell.CELL_TYPE_BOOLEAN:
+                    s += cell.getBooleanCellValue();
+                    break;
+                case Cell.CELL_TYPE_ERROR:
+                    s += cell.getErrorCellValue();
+                    break;
+                case Cell.CELL_TYPE_FORMULA:
+                    s += cell.getCellFormula();
+                    break;
+                case Cell.CELL_TYPE_NUMERIC:
+                    s += (int) cell.getNumericCellValue();
+                    break;
+                case Cell.CELL_TYPE_STRING:
+                    s += cell.getStringCellValue();
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
         return s;
     }
@@ -224,15 +229,30 @@ public class RP_ExcelUtils {
 
     private static XSSFWorkbook getReportTemplateWorkbook() {
         XSSFWorkbook workBook;
-        Properties properties = PropertyUtils.getProperties();
+        //Properties properties = PropertyUtils.getProperties();
         //String name = properties.getProperty("TEMPLATE");
         String name = "ReportTemplate.xlsx";
-        try (InputStream inputStream = new FileInputStream(name)){
+        try (InputStream inputStream = new FileInputStream(name)) {
             workBook = new XSSFWorkbook(inputStream);
         } catch (IOException e) {
             //e.printStackTrace();
             throw new InfoException("Не нахожу ReportTemplate.xlsx.");
         }
         return workBook;
+    }
+
+    public static Set<String> readEngineers(String fileName) {
+        Set<String> set = new HashSet<>();
+        try {
+            File file = new File(fileName);
+            Workbook engineerList = RP_ExcelUtils.getWorkbook(file);
+            for (Row cells : engineerList.getSheetAt(0)) {
+                set.add(cells.getCell(0).getStringCellValue());
+            }
+            engineerList.close();
+        } catch (IOException | NullPointerException ex) {
+            throw new InfoException("Ошибка чтения файла ".concat(fileName));
+        }
+        return set;
     }
 }
